@@ -1,0 +1,50 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
+
+header {
+  background-color: lightgreen;
+  text-align: center;
+  padding: 30px 10px;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 100px;
+  color: rgba(78, 21, 21, 0.68);
+}
+
+main {
+  display: flex;
+}
+
+.basic-info {
+  width: 30%;
+  min-height: 500px;
+  padding: 25px;
+  background-color: beige;
+}
+
+.description {
+  width: 70%;
+  min-height: 500px;
+  padding: 25px;
+  background-color: rgb(210, 206, 146);
+}
+
+footer {
+  background-color: lightgreen;
+  color: rgba(78, 21, 21, 0.68);
+  text-align: center;
+  padding: 20px;
+  font-size: 24px;
+}
+
+footer p {
+  margin: 0;
+}
