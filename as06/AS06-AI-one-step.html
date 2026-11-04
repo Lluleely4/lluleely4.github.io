@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>整屏跳转与平滑滚动</title>
+  <style>
+    /* 页面使用浏览器原生的平滑滚动效果。 */
+    html {
+      scroll-behavior: smooth;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei", "Noto Sans SC", sans-serif;
+      color: #173042;
+    }
+
+    /* 每个区块占满一个屏幕，并将主要文字放在正中心。 */
+    .screen {
+      position: relative;
+      display: grid;
+      min-height: 100vh;
+      place-items: center;
+      text-align: center;
+    }
+
+    .page-one {
+      background: #8ed6df;
+    }
+
+    /* 第二页是两个屏幕高，两个标记分别位于 50vh 和 150vh。 */
+    .page-two {
+      height: 200vh;
+      background: #f4c47a;
+    }
+
+    .page-two-label {
+      position: absolute;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .page-two-label.first {
+      top: 25%;
+    }
+
+    .page-two-label.second {
+      top: 75%;
+    }
+
+    .page-three-top {
+      background: #9bd7a7;
+    }
+
+    .page-three-bottom {
+      background: #b3a7e8;
+    }
+
+    .page-four {
+      background: #f29aaa;
+    }
+
+    .label-group h1,
+    .label-group p {
+      margin: 0;
+    }
+
+    .label-group h1,
+    .page-two-label,
+    .page-three-bottom h2 {
+      font-size: clamp(2rem, 5vw, 4rem);
+    }
+
+    .label-group p {
+      margin-top: 0.65rem;
+      font-size: clamp(1.1rem, 2.5vw, 1.7rem);
+    }
+  </style>
+</head>
+<body>
+  <!-- 第一页：一个屏幕高。 -->
+  <div class="screen page-one" id="page1">
+    <h1>第一页</h1>
+  </div>
+
+  <!-- 第二页：两个屏幕高，在各自屏幕的中心标注页名。 -->
+  <div class="screen page-two" id="page2">
+    <h2 class="page-two-label first">第二页</h2>
+    <h2 class="page-two-label second">第二页</h2>
+  </div>
+
+  <!-- 第三页上半部分：中心同时标注第三页和上半部分。 -->
+  <div class="screen page-three-top" id="page3-top">
+    <div class="label-group">
+      <h1>第三页</h1>
+      <p>第三页上半部分</p>
+    </div>
+  </div>
+
+  <!-- 第三页下半部分：与上半部分使用不同颜色，普通平滑滚动。 -->
+  <div class="screen page-three-bottom" id="page3-bottom">
+    <h2>第三页下半部分</h2>
+  </div>
+
+  <!-- 第四页：一个屏幕高。 -->
+  <div class="screen page-four" id="page4">
+    <h1>第四页</h1>
+  </div>
+
+  <!-- 使用 jQuery 计算区块位置，并在接近指定边界时平滑跳转。 -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script>
+    $(function () {
+      let jumping = false;
+      const edgeRange = 0.22; // 距交界处 22vh 内触发整屏跳转。
+
+      // 只列出需要整屏跳转的三组交界处。
+      const transitions = [
+        {
+          boundary: () => $("#page2").offset().top,
+          previousScreen: () => $("#page1").offset().top
+        },
+        {
+          boundary: () => $("#page3-top").offset().top,
+          previousScreen: () => $("#page2").offset().top + window.innerHeight
+        },
+        {
+          boundary: () => $("#page4").offset().top,
+          previousScreen: () => $("#page3-bottom").offset().top
+        }
+      ];
+
+      function scrollToPosition(top) {
+        jumping = true;
+        // jQuery 动画让跳转过程保持平滑，完成后重新接受滚轮操作。
+        $("html, body").stop(true).animate({ scrollTop: top }, 550, "swing")
+          .promise()
+          .done(function () {
+            jumping = false;
+          });
+      }
+
+      // 明确使用非被动监听，确保靠近边界时可以接管这次滚动。
+      window.addEventListener("wheel", function (event) {
+        if (jumping || event.deltaY === 0) return;
+
+        const currentTop = window.scrollY;
+        const range = window.innerHeight * edgeRange;
+
+        for (const transition of transitions) {
+          const boundary = transition.boundary();
+
+          if (event.deltaY > 0) {
+            // 向下滚动：从交界上方接近时跳到下一个屏幕的起点。
+            if (currentTop < boundary && currentTop >= boundary - range) {
+              event.preventDefault();
+              scrollToPosition(boundary);
+              return;
+            }
+          } else {
+            // 向上滚动：从交界下方接近时跳回前一个屏幕的起点。
+            if (currentTop >= boundary && currentTop <= boundary + range) {
+              event.preventDefault();
+              scrollToPosition(transition.previousScreen());
+              return;
+            }
+          }
+        }
+      }, { passive: false });
+    });
+  </script>
+</body>
+</html>
