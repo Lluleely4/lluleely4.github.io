@@ -107,18 +107,17 @@
         const page3BottomTop = $('#page3-bottom').offset().top;
         const page4Top = $('#page4').offset().top;
         const movingDown = delta > 0;
-        const atBoundary = (boundary) => Math.abs(scrollTop - boundary) < 2;
+        // 交界触发缓冲区：进入边界前后约 12% 视窗高度即可触发，不必像素级对齐。
+        const triggerMargin = Math.max(80, viewportHeight * 0.12);
         const page2EndViewTop = page3Top - viewportHeight;
         let targetTop = null;
 
         if (movingDown) {
           // 从第一页进入第二页；第二页内部滚到末屏后，下一次滚轮跳到第三页上半部分。
           if (scrollTop < page2Top) targetTop = page2Top;
-          else if (scrollTop < page2EndViewTop && scrollTop + delta >= page2EndViewTop) {
-            event.preventDefault();
-            window.scrollTo(0, page2EndViewTop);
-            return;
-          } else if (atBoundary(page2EndViewTop)) targetTop = page3Top;
+          else if (scrollTop < page3Top &&
+            (scrollTop >= page2EndViewTop - triggerMargin ||
+             scrollTop + delta >= page2EndViewTop - triggerMargin)) targetTop = page3Top;
           // 第四个 div 与第五个 div 之间双向跳转；第三个与第四个仍正常滚动。
           else if (scrollTop >= page3BottomTop - 2 && scrollTop < page4Top)
             targetTop = page4Top;
@@ -126,16 +125,18 @@
             targetTop = page4Top;
         } else {
           // 第五个 div 返回第四个 div、第三个 div 返回第二个 div 时直接跳转。
-          if (scrollTop >= page4Top && scrollTop + delta <= page4Top)
+          if (scrollTop >= page4Top &&
+            (scrollTop <= page4Top + triggerMargin ||
+             scrollTop + delta <= page4Top + triggerMargin))
             targetTop = page3BottomTop;
-          else if (scrollTop >= page3Top && scrollTop + delta <= page3Top)
+          else if (scrollTop >= page3Top &&
+            (scrollTop <= page3Top + triggerMargin ||
+             scrollTop + delta <= page3Top + triggerMargin))
             targetTop = page3Top - viewportHeight;
           // 第二页内部仍可向上正常滚动；到达顶部后再返回第一页。
-          else if (scrollTop > page2Top + 2 && scrollTop + delta <= page2Top) {
-            event.preventDefault();
-            window.scrollTo(0, page2Top);
-            return;
-          } else if (atBoundary(page2Top)) targetTop = 0;
+          else if (scrollTop >= page2Top &&
+            (scrollTop <= page2Top + triggerMargin ||
+             scrollTop + delta <= page2Top + triggerMargin)) targetTop = 0;
         }
 
         if (targetTop !== null) {
