@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>分屏滚动示例</title>
+  <!-- 使用 jQuery CDN，方便用简洁的事件代码处理滚轮跳页。 -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <style>
+    /* 清除默认边距，避免页面高度多出一截。 */
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; }
+
+    /* 每个区块占满一个视口；颜色用于区分不同页面。 */
+    .screen {
+      min-height: 100vh;
+      min-height: 100svh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font: 600 clamp(1.5rem, 4vw, 3rem)/1.5 system-ui, sans-serif;
+      text-align: center;
+      padding: 1.5rem;
+    }
+
+    /* 第二页占两屏，两个标注分别位于页面内 50vh 与 150vh 处。 */
+    #page2 {
+      height: 200vh;
+      height: 200svh;
+      min-height: 200vh;
+      min-height: 200svh;
+      display: block;
+      position: relative;
+    }
+    #page2 .label {
+      position: absolute;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      white-space: nowrap;
+    }
+    #page2 .label:first-child { top: 50vh; top: 50svh; }
+    #page2 .label:last-child { top: 150vh; top: 150svh; }
+
+    /* 第三页的上下两部分分别使用不同的背景色。 */
+    #page1 { background: #315c8c; }
+    #page2 { background: #a34d46; }
+    #page3-top { background: #39836c; }
+    #page3-bottom { background: #7660a5; }
+    #page4 { background: #c47b32; }
+
+    .label small {
+      display: block;
+      font-size: .55em;
+      font-weight: 400;
+      opacity: .9;
+    }
+  </style>
+</head>
+<body>
+  <!-- 第一页：与第二页之间按一屏为单位跳转。 -->
+  <div class="screen" id="page1"><div class="label">第一页</div></div>
+
+  <!-- 第二页高 200vh；内部正常滚动，两个标注分别位于 50vh 与 150vh。 -->
+  <div class="screen" id="page2">
+    <div class="label">第二页</div>
+    <div class="label">第二页</div>
+  </div>
+
+  <!-- 第三页上半部分：与第二页之间整屏跳转，与下半部分之间正常滚动。 -->
+  <div class="screen" id="page3-top">
+    <div class="label">第三页<small>第三页上半部分</small></div>
+  </div>
+
+  <!-- 第三页下半部分：与上半部分之间保留浏览器的正常滚动。 -->
+  <div class="screen" id="page3-bottom">
+    <div class="label"><small>第三页下半部分</small></div>
+  </div>
+
+  <!-- 第四页：从第三页下半部分进入及返回时按一屏跳转。 -->
+  <div class="screen" id="page4"><div class="label">第四页</div></div>
+
+  <script>
+    $(function () {
+      const $window = $(window);
+      let isJumping = false;
+
+      // 平滑滚到目标区块，并在动画结束前忽略额外滚轮输入，避免连续跳多页。
+      function jumpTo(targetTop) {
+        if (isJumping) return;
+        isJumping = true;
+        $('html, body').stop().animate({ scrollTop: targetTop }, 500, function () {
+          isJumping = false;
+        });
+      }
+
+      // 仅在页面交界处整屏跳转；第二页内部及第三页上下部分之间保留原生滚动。
+      $window.on('wheel', function (event) {
+        const originalEvent = event.originalEvent;
+        const delta = originalEvent.deltaY;
+        if (!delta || isJumping) return;
+
+        const scrollTop = $window.scrollTop();
+        const viewportHeight = $window.height();
+        const page2Top = $('#page2').offset().top;
+        const page3Top = $('#page3-top').offset().top;
+        const page3BottomTop = $('#page3-bottom').offset().top;
+        const page4Top = $('#page4').offset().top;
+        const movingDown = delta > 0;
+        const atBoundary = (boundary) => Math.abs(scrollTop - boundary) < 2;
+        const page2EndViewTop = page3Top - viewportHeight;
+        let targetTop = null;
+
+        if (movingDown) {
+          // 从第一页进入第二页；第二页内部滚到末屏后，下一次滚轮跳到第三页上半部分。
+          if (scrollTop < page2Top) targetTop = page2Top;
+          else if (scrollTop < page2EndViewTop && scrollTop + delta >= page2EndViewTop) {
+            event.preventDefault();
+            window.scrollTo(0, page2EndViewTop);
+            return;
+          } else if (atBoundary(page2EndViewTop)) targetTop = page3Top;
+          // 第四个 div 与第五个 div 之间双向跳转；第三个与第四个仍正常滚动。
+          else if (scrollTop >= page3BottomTop - 2 && scrollTop < page4Top)
+            targetTop = page4Top;
+          else if (scrollTop < page4Top && scrollTop + delta >= page4Top)
+            targetTop = page4Top;
+        } else {
+          // 第五个 div 返回第四个 div、第三个 div 返回第二个 div 时直接跳转。
+          if (scrollTop >= page4Top && scrollTop + delta <= page4Top)
+            targetTop = page3BottomTop;
+          else if (scrollTop >= page3Top && scrollTop + delta <= page3Top)
+            targetTop = page3Top - viewportHeight;
+          // 第二页内部仍可向上正常滚动；到达顶部后再返回第一页。
+          else if (scrollTop > page2Top + 2 && scrollTop + delta <= page2Top) {
+            event.preventDefault();
+            window.scrollTo(0, page2Top);
+            return;
+          } else if (atBoundary(page2Top)) targetTop = 0;
+        }
+
+        if (targetTop !== null) {
+          event.preventDefault();
+          jumpTo(targetTop);
+        }
+      });
+    });
+  </script>
+</body>
+</html>
